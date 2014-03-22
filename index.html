@@ -1,154 +1,179 @@
-<html>
-  <head>
-    <style>
-
-.node {
-  opacity: 0.5;
-}
-
-.node:hover {
-  opacity: 1;
-}
-
-.link {
-  stroke: #999;
-  stroke-opacity: 0.3;
-}
-
-text{
-  font-family: 'Helvetica';
-  font-size: 10px;
-}
-
-    </style>
-    <script src="http://d3js.org/d3.v3.min.js"></script>
-  </head>
-  <body>
-    <!-- Renders teh vizualization in the div below -->
-    <div id="viz"></div>
-    <script>
-
-function name(d) { return d.name; }
-function group(d) { return d.group; }
-
-//Uses d3 color scales to determine the color of the circles/nodes
-var color = d3.scale.category10();
-function colorByGroup(d) { return color(group(d)); }
-
-var width = 1200,
-    height = 800;
-
-//Renders the visualzation within the div id="viz" above
-var svg = d3.select('#viz')
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height);
-
-var node, link;
-
-var voronoi = d3.geom.voronoi()
-    .x(function(d) { return d.x; })
-    .y(function(d) { return d.y; })
-    .clipExtent([[-10, -10], [width+10, height+10]]);
-
-function recenterVoronoi(nodes) {
-    var shapes = [];
-    voronoi(nodes).forEach(function(d) {
-        if ( !d.length ) return;
-        var n = [];
-        d.forEach(function(c){
-            n.push([ c[0] - d.point.x, c[1] - d.point.y ]);
-        });
-        n.point = d.point;
-        shapes.push(n);
-    });
-    return shapes;
-}
-
-//Alter various attributes related to how the nodes interact
-//Feel free to mess with the numbers and see how it affects the visualization graph
-var force = d3.layout.force()
-    .charge(-2000)
-    .friction(0.3)
-    .linkDistance(35)
-    .size([width, height]);
-
-//This begins interactivity of the force layout - essentially "starts" the visualization
-//Will not usually need to touch this
-force.on('tick', function() {
-    node.attr('transform', function(d) { return 'translate('+d.x+','+d.y+')'; })
-        .attr('clip-path', function(d) { return 'url(#clip-'+d.index+')'; });
-
-    link.attr('x1', function(d) { return d.source.x; })
-        .attr('y1', function(d) { return d.source.y; })
-        .attr('x2', function(d) { return d.target.x; })
-        .attr('y2', function(d) { return d.target.y; });
-
-    var clip = svg.selectAll('.clip')
-        .data( recenterVoronoi(node.data()), function(d) { return d.point.index; } );
-
-    clip.enter().append('clipPath')
-        .attr('id', function(d) { return 'clip-'+d.point.index; })
-        .attr('class', 'clip');
-    clip.exit().remove()
-
-    clip.selectAll('path').remove();
-    clip.append('path')
-        .attr('d', function(d) { return 'M'+d.join(',')+'Z'; });
-});
-
-//function that loads the data into d3 for processing
-d3.json('kevinBacon.json', function(err, data) {
-
-    data.nodes.forEach(function(d, i) {
-        d.id = i;
-    });
-
-    link = svg.selectAll('.link')
-        .data( data.links )
-      .enter().append('line')
-        .attr('class', 'link')
-        .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+<!DOCTYPE html>
+    <html>
+        <head>
+            <title>PearlHacks D3.js</title>
+            <meta name="description" content="Introductory D3.js">
+                <link href="style.css" rel="stylesheet">
+                <link href="lib/pdf.css" rel="stylesheet" media="print">
+        </head>
         
-    //On screen, nodes do not typically appear as anything - it provides the underlying structure to allow
-    //other things to be attached to it
-    node = svg.selectAll('.node')
-        .data( data.nodes )
-      .enter().append('g')
-        .attr('title', name)
-        .attr('class', 'node')
-        .call( force.drag );
-        
-    //Attaches the semi-transparent circles to the nodes
-    //May alternatively (or additionally) attach a picture to the node 
-    node.append('circle')
-        //Gives the circle a radius of 20
-        .attr('r', 20)
-        //Fills the circle according to the group number specified in the json file
-        .attr('fill', colorByGroup)
-        .attr('fill-opacity', 0.5);
-
-    //Display attributes for the smaller black circles in the center of each node
-    node.append('circle')
-        .attr('r', 4)
-        .attr('stroke', 'black');
-    
-    //Not default, but I like having the text there so I can see what I'm looking at.
-    //Style attributes are included in the css above
-    node.append("text")
-        //Determines where the text is placed in relation to the node
-        .attr("text-anchor", "middle")
-        .attr("dx", function(d) { return Math.sqrt(d.size) / 10 || 4.5; })
-        .attr("dy", "2em")
-        //This returns the data from the json file attached to the "name" attribute
-        .text(function(d) { return d.name; });
-
-    force
-        .nodes( data.nodes )
-        .links( data.links )
-        .start();
-});
-
-    </script>
-  </body>
-</html>
+        <body>
+            <div class="reveal">
+                <div class="slides">
+                    <section id="title">
+                        <h1>D3.js 101</h1>
+                        <h3>A Technical Intro</h3>
+                    </section>
+                    
+                    <section id="outline">
+                        <h2>Outline</h2>
+                        <ol>
+                            <li>What D3 Is</li>
+                            <li>What D3 Can Do</li>
+                            <li>How D3 Works</li>
+                            <li>Force Directed Layout Example</li>
+                        </ol>
+                    </section>
+                    
+                    <section>
+                        <section id="what-is-d3">
+                            <h2>What is D3.js?</h2>
+                            <ul>
+                                <li>Open source JavaScript library for manipulating documents based on data</li>
+                                    <ul>
+                                        <li>It's <i>SUPER</i> baller</li>
+                                    </ul>
+                                <li>Built for data visualization with web technologies (HTML, CSS, JavaScript)</li>
+                                    <ul>
+                                        <li>Default styles are cleanest looking I've seen for a viz library</li>
+                                        <li>Many charting libraries built on top of D3 - I particularly like NVD3</li>
+                                    </ul>
+                            </ul>
+                        </section>
+                        
+                        <section id="facts">
+                            <h2>Facts</h2>
+                            <ul>
+                                <li>D3 = Data-Driven Documents</li>
+                                <li>Made by <a href="http://bost.ocks.org/mike/" target="_blank">Mike Bostock</a></li>
+                                <li>Started in 2010</li>
+                            </ul>
+                        </section>
+                    </section>
+                    
+                    <section>
+                        <section id="demos">
+                            <h2>The Power of D3</h2>
+                        </section>
+                        <section>
+                            <p><img src="images/stock.png" class="demo"></p>
+                            <p><small><a href="http://bl.ocks.org/1256572" target="_blank">http://bl.ocks.org/1256572</a></small></p>
+                        </section>
+                        <section>
+                            <p><img src="images/ncaa.png" class="demo"></p>
+                            <p><small><a href="http://billmill.org/roundbracket/" target="_blank">http://billmill.org/roundbracket/</a></small></p>
+                        </section>
+                        <section>
+                            <p><img src="images/les-miserables.png" class="demo"></p>
+                            <p><small><a href="http://bost.ocks.org/mike/miserables/" target="_blank">http://bost.ocks.org/mike/miserables/</a></small></p>
+                        </section>
+                        <section>
+                            <p><img src="images/flare-packages.png" class="demo"></p><p><small><a href="http://mbostock.github.com/d3/talk/20111018/treemap.html" target="_blank">http://mbostock.github.com/d3/talk/20111018/treemap.html</a></small></p>
+                        </section>
+                        <section>
+                            <p><img src="images/unemployment.png" class="demo"></p>
+                            <p><small><a href="http://mbostock.github.com/d3/talk/20111018/choropleth.html" target="_blank">http://mbostock.github.com/d3/talk/20111018/choropleth.html</a></small></p>
+                        </section>
+                    </section>
+                    <section>
+                        <section id="how-d3-works">
+                            <h2>How D3 Works</h2>
+                            <p><em>What I wish someone had told me<br>when I was learning D3</em></p>
+                        </section>
+                        <section id="data-binding">
+                            <h3>Data-DOM Binding</h3>
+                            <p>Think about visualization &ndash;<br>it's all about binding data to visual elements.</p>
+                        </section>
+                        <section>
+                            <h3>Force Directed Layout Example</h3>
+                            <h4>(This is what you're going to make)</h4>
+                            <p><img src="images/force.png" class="demo"></p>
+                            <p><small><a href="http://www.accessatlanta.com/entertainment/six-degrees/" target="_blank">Another Example</a></small></p>
+                        </section>
+                        <section>
+                            <h2>Get from Git</h2>
+                            <h4>Download the zip or clone this repo</h4>
+                            <p><a href="https://github.com/caseymm/PearlHacks_D3_demo" target="_blank">https://github.com/caseymm/PearlHacks_D3_demo</a></p>
+                        </section>
+                        <section>
+                            <ul>
+                                <li>Giving you all of the code in the top level index.html</li>
+                                <li>Two included JSON files</li>
+                                <ul>
+                                    <li>kevinBacon.json <small>(Because I think it's funny)</small></li>
+                                    <li>miserables.json</li>
+                                </ul>
+                            </ul>
+                        </section>
+                    </section>
+                    <section>
+                        <section>
+                            <h3>Things to know about D3</h3>
+                        </section>
+                        <section>
+                            <h3>Render to div id</h3>
+                            <p><img src="images/renderViz.png" class="demo"></p>
+                        </section>
+                        <section>
+                            <h3>Using remote data</h3>
+                            <p>Need to run a local server to load the data</p>
+                            <ul>
+                                <li>Open Terminal or other CLI</li>
+                                <li>$ python -m SimpleHTTPServer 8000</li>
+                            </ul>
+                        </section>
+                        <section>
+                            <h3>D3 likes JSON</h3>
+                            <p>You don't <i>have</i> to import JSON, but it's typically easier to work with</p>
+                            <p><img src="images/json.png" class="demo"></p>
+                        </section>
+                        <section>
+                            <h3>Concept of Nodes</h3>
+                            <p><img src="images/nodes.png" class="demo"></p>
+                        </section>
+                        <section>
+                            <p><img src="images/nodesCircle.png" class="demo"></p>
+                        </section>
+                        <section>
+                            <p><img src="images/nodesText.png" class="demo"></p>
+                        </section>
+                        <section>
+                            <h3>Colors</h3>
+                            <p><img src="images/colors.png" class="demo"></p>
+                        </section>
+                        <section>
+                            <h3>Force Layout Specific</h3>
+                            <p><img src="images/forceSpecific.png" class="demo"></p>
+                        </section>
+                        <section>
+                            <p><img src="images/tick.png" class="demo"></p>
+                        </section>
+                    </section>
+                    <section>
+                        <section id="resources">
+                            <h2>Resources</h2>
+                            <p><a href="http://d3js.org/" target="_blank">D3.js Website</a></p>
+                            <p><a href="https://github.com/mbostock/d3/wiki/Gallery" target="_blank">Gallery</a></p>
+                            <p><a href="https://github.com/mbostock/d3/wiki/Tutorials" target="_blank">Tutorials</a></p>
+                            <p><a href="https://github.com/mbostock/d3/wiki/API-Reference" target="_blank">API Reference</a></p>
+                            <p><a href="https://github.com/mbostock/d3" target="_blank">GitHub Project</a></p>
+                        </section>
+                        <section id="end">
+                            <h2>Questions?</h2>
+                        </section></div>
+                    </section>
+            </div>
+            <script src="lib/head.min.js"></script>
+            <script src="lib/reveal.min.js"></script><script>Reveal.initialize({
+  history: true,
+  // rollingLinks: false,
+  dependencies: [
+    {
+      src: 'lib/highlight.js',
+      async: true,
+      callback: function() {
+        hljs.initHighlightingOnLoad();
+      }
+    }
+  ]
+});</script></body></html>
