@@ -24,18 +24,21 @@ text{
     <script src="http://d3js.org/d3.v3.min.js"></script>
   </head>
   <body>
+    <!-- Renders teh vizualization in the div below -->
     <div id="viz"></div>
     <script>
 
 function name(d) { return d.name; }
 function group(d) { return d.group; }
 
+//Uses d3 color scales to determine the color of the circles/nodes
 var color = d3.scale.category10();
 function colorByGroup(d) { return color(group(d)); }
 
 var width = 1200,
     height = 800;
 
+//Renders the visualzation within the div id="viz" above
 var svg = d3.select('#viz')
     .append('svg')
     .attr('width', width)
@@ -62,12 +65,16 @@ function recenterVoronoi(nodes) {
     return shapes;
 }
 
+//Alter various attributes related to how the nodes interact
+//Feel free to mess with the numbers and see how it affects the visualization graph
 var force = d3.layout.force()
     .charge(-2000)
     .friction(0.3)
-    .linkDistance(50)
+    .linkDistance(35)
     .size([width, height]);
 
+//This begins interactivity of the force layout - essentially "starts" the visualization
+//Will not usually need to touch this
 force.on('tick', function() {
     node.attr('transform', function(d) { return 'translate('+d.x+','+d.y+')'; })
         .attr('clip-path', function(d) { return 'url(#clip-'+d.index+')'; });
@@ -90,6 +97,7 @@ force.on('tick', function() {
         .attr('d', function(d) { return 'M'+d.join(',')+'Z'; });
 });
 
+//function that loads the data into d3 for processing
 d3.json('kevinBacon.json', function(err, data) {
 
     data.nodes.forEach(function(d, i) {
@@ -101,28 +109,38 @@ d3.json('kevinBacon.json', function(err, data) {
       .enter().append('line')
         .attr('class', 'link')
         .style("stroke-width", function(d) { return Math.sqrt(d.value); });
-
+        
+    //On screen, nodes do not typically appear as anything - it provides the underlying structure to allow
+    //other things to be attached to it
     node = svg.selectAll('.node')
         .data( data.nodes )
       .enter().append('g')
         .attr('title', name)
         .attr('class', 'node')
         .call( force.drag );
-
+        
+    //Attaches the semi-transparent circles to the nodes
+    //May alternatively (or additionally) attach a picture to the node 
     node.append('circle')
-        .attr('r', 30)
+        //Gives the circle a radius of 20
+        .attr('r', 20)
+        //Fills the circle according to the group number specified in the json file
         .attr('fill', colorByGroup)
         .attr('fill-opacity', 0.5);
 
+    //Display attributes for the smaller black circles in the center of each node
     node.append('circle')
         .attr('r', 4)
         .attr('stroke', 'black');
     
-    
+    //Not default, but I like having the text there so I can see what I'm looking at.
+    //Style attributes are included in the css above
     node.append("text")
+        //Determines where the text is placed in relation to the node
         .attr("text-anchor", "middle")
         .attr("dx", function(d) { return Math.sqrt(d.size) / 10 || 4.5; })
         .attr("dy", "2em")
+        //This returns the data from the json file attached to the "name" attribute
         .text(function(d) { return d.name; });
 
     force
